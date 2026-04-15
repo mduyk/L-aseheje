@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST HỆ THỐNG AUTO</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body { background: #0b0b12; color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .box { background: #151521; padding: 30px; border-radius: 15px; border: 1px solid #333; width: 320px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #444; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #00f2ff; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; color: #000; }
+        .hidden { display: none; }
+        .bal-box { background: #000; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 4px solid #00f2ff; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <div id="auth-ui">
+            <h2 style="color: #00f2ff;">TEST HỆ THỐNG</h2>
+            <input type="text" id="u" placeholder="Nhập tên tài khoản...">
+            <input type="password" id="p" placeholder="Mật khẩu...">
+            <button onclick="handle('login')">ĐĂNG NHẬP</button>
+            <button onclick="handle('reg')" style="background:#222; color:#00f2ff; border:1px solid #00f2ff;">ĐĂNG KÝ MỚI</button>
+        </div>
+
+        <div id="shop-ui" class="hidden">
+            <h3 id="user-txt" style="color:#00f2ff;"></h3>
+            <div class="bal-box">
+                <div style="font-size: 11px; color: #888;">SỐ DƯ HIỆN TẠI</div>
+                <div id="balance-txt" style="font-size: 32px; color: #ffcc00; font-weight: bold;">0đ</div>
+            </div>
+            <div style="border: 1px dashed #444; padding: 10px; border-radius: 8px;">
+                <p style="font-size: 13px; margin: 0;">Nội dung CK: <b id="memo-txt" style="color:#00f2ff;"></b></p>
+                <img id="qr-img" src="" style="width: 100%; max-width: 200px; background:#fff; margin-top:10px; border-radius: 5px;">
+            </div>
+            <button onclick="localStorage.clear(); location.reload();" style="background:#ff4d4d; color:#fff; margin-top:20px;">THOÁT & TEST LẠI</button>
+        </div>
+    </div>
+
+<script>
+    // 1. Cấu hình Firebase của ông
+    const firebaseConfig = { databaseURL: "https://shopctv-61f96-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function handle(type) {
+        let u = document.getElementById('u').value.trim().toLowerCase();
+        let p = document.getElementById('p').value.trim();
+        if(!u || !p) return alert("Điền đủ cả tên và pass!");
+
+        if(type === 'reg') {
+            db.ref('users/' + u).set({ password: p, balance: 0 }).then(() => alert("Đăng ký OK! Giờ bấm Đăng nhập."));
+        } else {
+            db.ref('users/' + u).once('value', s => {
+                if(s.exists() && s.val().password === p) {
+                    localStorage.setItem('user', u);
+                    loadShop(u);
+                } else alert("Sai tài khoản hoặc mật khẩu!");
+            });
+        }
+    }
+
+    function loadShop(u) {
+        document.getElementById('auth-ui').classList.add('hidden');
+        document.getElementById('shop-ui').classList.remove('hidden');
+        document.getElementById('user-txt').innerText = "USER: " + u.toUpperCase();
+        document.getElementById('memo-txt').innerText = "NAP " + u;
+        // MB Bank của ông
+        document.getElementById('qr-img').src = `https://img.vietqr.io/image/MB-0588807300000-compact2.png?addInfo=NAP%20${u}`;
+
+        // LẮNG NGHE BIẾN ĐỘNG TIỀN (REALTIME)
+        db.ref('users/' + u + '/balance').on('value', s => {
+            let money = s.val() || 0;
+            document.getElementById('balance-txt').innerText = money.toLocaleString() + "đ";
+            if(money > 0) {
+                console.log("Tiền đã nhảy: " + money);
+            }
+        });
+    }
+
+    // Tự vào nếu đã có session
+    const saved = localStorage.getItem('user');
+    if(saved) loadShop(saved);
+</script>
+</body>
+</html>
